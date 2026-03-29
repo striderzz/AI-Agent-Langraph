@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ReAct Agent — LangGraph</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #1c2330;
+      --border: #30363d;
+      --accent: #58a6ff;
+      --accent2: #3fb950;
+      --accent3: #d2a679;
+      --accent4: #bc8cff;
+      --text: #e6edf3;
+      --muted: #7d8590;
+      --danger: #f85149;
+      --tag-human: #1f3a5f;
+      --tag-ai: #1a3a2a;
+      --tag-tool: #3a2a1a;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    /* ---- Sidebar ---- */
+    #sidebar {
+      width: 280px;
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem 1rem;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    #sidebar .brand {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 2rem;
+    }
+    #sidebar .brand .icon-wrap {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      color: #000;
+    }
+    #sidebar .brand h6 {
+      margin: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--text);
+    }
+    #sidebar .brand small { color: var(--muted); font-size: 10px; }
+
+    #sidebar label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    #sidebar input[type="password"],
+    #sidebar input[type="text"] {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      border-radius: 6px;
+      padding: 8px 10px;
+      width: 100%;
+      margin-bottom: 12px;
+      transition: border-color .2s;
+    }
+    #sidebar input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(88,166,255,.15);
+    }
+
+    .btn-configure {
+      background: var(--accent);
+      color: #000;
+      font-weight: 600;
+      font-size: 13px;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      width: 100%;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+    }
+    .btn-configure:hover { opacity: .88; }
+    .btn-configure:active { transform: scale(.98); }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 11px; font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-top: 10px;
+    }
+    .status-badge.ok { background: rgba(63,185,80,.15); color: var(--accent2); }
+    .status-badge.err { background: rgba(248,81,73,.12); color: var(--danger); }
+    .status-badge .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+    }
+    .status-badge.ok .dot { background: var(--accent2); }
+    .status-badge.err .dot { background: var(--danger); }
+
+    .sidebar-divider {
+      border: none; border-top: 1px solid var(--border);
+      margin: 1.25rem 0;
+    }
+
+    .tool-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+      padding: 4px 10px;
+      margin: 3px 2px;
+      color: var(--muted);
+    }
+    .tool-pill i { font-size: 12px; }
+
+    /* ---- Main ---- */
+    #main {
+      margin-left: 280px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    #topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: .75rem 1.5rem;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+    }
+    #topbar h5 {
+      margin: 0;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px; font-weight: 600; color: var(--text);
+    }
+    #topbar .sub { font-size: 11px; color: var(--muted); }
+
+    /* ---- Chat area ---- */
+    #chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+
+    .msg-wrap { display: flex; flex-direction: column; gap: 4px; }
+
+    .msg-header {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .05em;
+    }
+    .msg-header .role-icon {
+      width: 22px; height: 22px; border-radius: 5px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px;
+    }
+
+    .msg-bubble {
+      padding: 12px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 13.5px;
+      line-height: 1.6;
+      max-width: 100%;
+      word-break: break-word;
+    }
+
+    /* Human */
+    .msg-human .msg-header .role-icon { background: var(--tag-human); color: var(--accent); }
+    .msg-human .msg-header .lbl { color: var(--accent); }
+    .msg-human .msg-bubble { background: var(--tag-human); border-color: #2a4a7f; }
+
+    /* AI */
+    .msg-ai .msg-header .role-icon { background: var(--tag-ai); color: var(--accent2); }
+    .msg-ai .msg-header .lbl { color: var(--accent2); }
+    .msg-ai .msg-bubble { background: var(--tag-ai); border-color: #2a4a2a; }
+
+    /* Tool */
+    .msg-tool .msg-header .role-icon { background: var(--tag-tool); color: var(--accent3); }
+    .msg-tool .msg-header .lbl { color: var(--accent3); }
+    .msg-tool .msg-bubble {
+      background: var(--tag-tool);
+      border-color: #5a3a1a;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+    }
+
+    /* Tool calls inside AI messages */
+    .tool-call-block {
+      margin-top: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+    }
+    .tool-call-block .tc-header {
+      display: flex; align-items: center; gap: 6px;
+      margin-bottom: 6px;
+      color: var(--accent4);
+      font-weight: 600; font-size: 11px;
+    }
+    .tool-call-block .tc-args { color: var(--muted); }
+    .tool-call-block .tc-args span { color: var(--accent3); }
+
+    /* Tool result collapsed */
+    .tool-result-wrap details summary {
+      cursor: pointer;
+      color: var(--accent3);
+      font-weight: 600; font-size: 12px;
+      list-style: none;
+    }
+    .tool-result-wrap details summary::marker { display: none; }
+    .tool-result-raw {
+      margin-top: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px;
+      flex: 1; opacity: .5;
+      text-align: center; padding: 3rem;
+    }
+    .empty-state i { font-size: 40px; color: var(--muted); }
+    .empty-state p { color: var(--muted); margin: 0; font-size: 13px; }
+
+    /* ---- Input bar ---- */
+    #input-bar {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.5rem;
+      display: flex; gap: 10px; align-items: flex-end;
+    }
+    #query-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 14px;
+      border-radius: 8px;
+      padding: 10px 14px;
+      resize: none;
+      min-height: 44px; max-height: 140px;
+      transition: border-color .2s;
+      line-height: 1.5;
+    }
+    #query-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(88,166,255,.12);
+    }
+    #query-input::placeholder { color: var(--muted); }
+
+    .btn-send {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 8px;
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      flex-shrink: 0;
+    }
+    .btn-send:hover { opacity: .88; }
+    .btn-send:active { transform: scale(.95); }
+    .btn-send:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Spinner */
+    .thinking-row {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 12px; color: var(--muted);
+      padding: 6px 0;
+    }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    /* Toast */
+    #toast-area {
+      position: fixed; bottom: 80px; right: 20px;
+      display: flex; flex-direction: column; gap: 8px;
+      z-index: 9999;
+    }
+    .toast-msg {
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      animation: fadein .3s ease;
+      max-width: 300px;
+    }
+    .toast-msg.ok { background: rgba(63,185,80,.2); border: 1px solid var(--accent2); color: var(--accent2); }
+    .toast-msg.err { background: rgba(248,81,73,.15); border: 1px solid var(--danger); color: var(--danger); }
+    @keyframes fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+    /* Suggestions */
+    .suggestion-chips {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      justify-content: center; margin-top: 12px;
+    }
+    .chip {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 12px;
+      padding: 6px 14px;
+      cursor: pointer;
+      color: var(--text);
+      transition: border-color .2s, background .2s;
+    }
+    .chip:hover { border-color: var(--accent); background: rgba(88,166,255,.08); color: var(--accent); }
+
+    @media (max-width: 768px) {
+      #sidebar { display: none; }
+      #main { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ====== Sidebar ====== -->
+<div id="sidebar">
+  <div class="brand">
+    <div class="icon-wrap"><i class="bi bi-cpu-fill"></i></div>
+    <div>
+      <h6>ReAct Agent</h6>
+      <small>LangGraph + GPT-4o-mini</small>
+    </div>
+  </div>
+
+  <label>OpenAI API Key</label>
+  <input type="password" id="openai-key" placeholder="sk-proj-..." />
+
+  <label>Tavily API Key</label>
+  <input type="password" id="tavily-key" placeholder="tvly-..." />
+
+  <button class="btn-configure" onclick="configure()">
+    <i class="bi bi-plug-fill me-1"></i> Connect Agent
+  </button>
+
+  <div id="status-area"></div>
+
+  <hr class="sidebar-divider" />
+
+  <div style="margin-bottom:8px;">
+    <span style="font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);">
+      Available Tools
+    </span>
+  </div>
+  <div>
+    <span class="tool-pill"><i class="bi bi-search"></i> search_tool</span>
+    <span class="tool-pill"><i class="bi bi-cloud-sun"></i> recommend_clothing</span>
+  </div>
+
+  <hr class="sidebar-divider" />
+
+  <div style="font-size:11px;color:var(--muted);line-height:1.6;">
+    <strong style="color:var(--text);">ReAct Loop</strong><br/>
+    Think → Act → Observe → Repeat<br/><br/>
+    The agent reasons step-by-step, calls tools for live data, and adapts based on results.
+  </div>
+</div>
+
+<!-- ====== Main ====== -->
+<div id="main">
+  <!-- Topbar -->
+  <div id="topbar">
+    <div>
+      <h5><i class="bi bi-graph-up me-2"></i>ReAct Agent Interface</h5>
+      <div class="sub">Reasoning + Acting with LangGraph</div>
+    </div>
+    <button class="btn-send" title="Clear chat" onclick="clearChat()" style="background:var(--surface2);color:var(--muted);width:32px;height:32px;font-size:14px;">
+      <i class="bi bi-trash"></i>
+    </button>
+  </div>
+
+  <!-- Chat -->
+  <div id="chat-container">
+    <div class="empty-state" id="empty-state">
+      <i class="bi bi-robot"></i>
+      <p>Ask a question that requires live data.<br/>The agent will reason, search, and respond.</p>
+      <div class="suggestion-chips">
+        <span class="chip" onclick="useChip(this)">🌤 Weather in Tokyo + outfit advice</span>
+        <span class="chip" onclick="useChip(this)">🧊 Current weather in Dallas, what to wear?</span>
+        <span class="chip" onclick="useChip(this)">🌧 Is it raining in London today?</span>
+        <span class="chip" onclick="useChip(this)">☀️ Weather in Dubai + clothing tips</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div id="input-bar">
+    <textarea id="query-input" rows="1" placeholder="Ask anything requiring live reasoning…"
+      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="btn-send" id="send-btn" onclick="sendQuery()" title="Send">
+      <i class="bi bi-send-fill"></i>
+    </button>
+  </div>
+</div>
+
+<!-- Toast area -->
+<div id="toast-area"></div>
+
+<script>
+  // ---- Resize textarea ----
+  function autoResize(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px';
+  }
+
+  function handleKey(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendQuery();
+    }
+  }
+
+  function useChip(el) {
+    const text = el.textContent.replace(/^[^\w]*/, '').trim();
+    document.getElementById('query-input').value = text;
+    autoResize(document.getElementById('query-input'));
+    sendQuery();
+  }
+
+  // ---- Toast ----
+  function toast(msg, type='ok') {
+    const el = document.createElement('div');
+    el.className = `toast-msg ${type}`;
+    el.textContent = msg;
+    document.getElementById('toast-area').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  // ---- Configure ----
+  async function configure() {
+    const ok = document.getElementById('openai-key').value.trim();
+    const tv = document.getElementById('tavily-key').value.trim();
+    if (!ok || !tv) { toast('Both API keys are required.', 'err'); return; }
+
+    const btn = document.querySelector('.btn-configure');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="display:inline-block;margin-right:6px;"></span>Connecting…';
+
+    try {
+      const res = await fetch('/configure', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({openai_key: ok, tavily_key: tv})
+      });
+      const data = await res.json();
+      if (data.success) {
+        setStatus(true);
+        toast('Agent connected successfully!', 'ok');
+      } else {
+        setStatus(false, data.error);
+        toast(data.error || 'Connection failed.', 'err');
+      }
+    } catch(e) {
+      toast('Network error: ' + e.message, 'err');
+      setStatus(false, e.message);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-plug-fill me-1"></i> Connect Agent';
+    }
+  }
+
+  function setStatus(ok, err='') {
+    const area = document.getElementById('status-area');
+    if (ok) {
+      area.innerHTML = `<div class="status-badge ok"><span class="dot"></span>Agent Ready</div>`;
+    } else {
+      area.innerHTML = `<div class="status-badge err"><span class="dot"></span>${err || 'Disconnected'}</div>`;
+    }
+  }
+
+  // ---- Chat ----
+  const chat = document.getElementById('chat-container');
+  const emptyState = document.getElementById('empty-state');
+
+  function clearChat() {
+    const nodes = chat.querySelectorAll('.msg-wrap, .thinking-row');
+    nodes.forEach(n => n.remove());
+    emptyState.style.display = 'flex';
+  }
+
+  function scrollToBottom() {
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function hideEmpty() {
+    emptyState.style.display = 'none';
+  }
+
+  function appendMessage(role, content, toolCalls=[], toolName='') {
+    hideEmpty();
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-wrap';
+
+    const icons = { human: 'bi-person-fill', ai: 'bi-robot', tool: 'bi-terminal-fill' };
+    const labels = { human: 'You', ai: 'Agent', tool: `Tool: ${toolName}` };
+    const cls = { human: 'msg-human', ai: 'msg-ai', tool: 'msg-tool' };
+
+    let headerHTML = `
+      <div class="msg-header">
+        <div class="role-icon"><i class="bi ${icons[role]}"></i></div>
+        <span class="lbl">${labels[role]}</span>
+      </div>`;
+
+    let bubbleContent = '';
+    if (role === 'tool') {
+      // Try to pretty-print JSON
+      let parsed;
+      try { parsed = JSON.parse(content); } catch { parsed = null; }
+      const preview = parsed && Array.isArray(parsed)
+        ? parsed.slice(0,2).map(r => `• ${r.title || r.content || ''}`).join('\n')
+        : String(content).slice(0,200);
+
+      bubbleContent = `
+        <div class="tool-result-wrap">
+          <details>
+            <summary><i class="bi bi-chevron-right me-1"></i>${Array.isArray(parsed) ? parsed.length + ' result(s) returned' : 'View result'}</summary>
+            <pre class="tool-result-raw">${escHtml(typeof parsed === 'object' ? JSON.stringify(parsed, null, 2) : content)}</pre>
+          </details>
+          <div style="margin-top:6px;font-size:12px;color:var(--muted);">${escHtml(preview)}</div>
+        </div>`;
+    } else {
+      bubbleContent = escHtml(content).replace(/\n/g, '<br/>');
+      if (toolCalls && toolCalls.length > 0) {
+        bubbleContent += toolCalls.map(tc => `
+          <div class="tool-call-block">
+            <div class="tc-header"><i class="bi bi-gear-wide-connected"></i> Calling tool: <span style="color:var(--accent4)">${escHtml(tc.name)}</span></div>
+            <div class="tc-args">${Object.entries(tc.args).map(([k,v]) => `<span>${escHtml(k)}</span>: "${escHtml(String(v))}"`).join('<br/>')}</div>
+          </div>`).join('');
+      }
+    }
+
+    wrap.innerHTML = `
+      ${headerHTML}
+      <div class="msg-bubble ${cls[role]}">${bubbleContent}</div>`;
+
+    chat.insertBefore(wrap, null);
+    chat.appendChild(wrap);
+    scrollToBottom();
+    return wrap;
+  }
+
+  function showThinking() {
+    hideEmpty();
+    const el = document.createElement('div');
+    el.className = 'thinking-row';
+    el.id = 'thinking-indicator';
+    el.innerHTML = '<div class="spinner"></div><span>Agent is reasoning…</span>';
+    chat.appendChild(el);
+    scrollToBottom();
+  }
+
+  function hideThinking() {
+    const el = document.getElementById('thinking-indicator');
+    if (el) el.remove();
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+
+  async function sendQuery() {
+    const input = document.getElementById('query-input');
+    const q = input.value.trim();
+    if (!q) return;
+
+    // Check agent configured
+    const statusRes = await fetch('/status');
+    const statusData = await statusRes.json();
+    if (!statusData.configured) {
+      toast('Please configure your API keys first.', 'err');
+      return;
+    }
+
+    input.value = '';
+    autoResize(input);
+    document.getElementById('send-btn').disabled = true;
+
+    appendMessage('human', q);
+    showThinking();
+
+    const evtSource = new EventSource(`/query?q=${encodeURIComponent(q)}`);
+
+    evtSource.onmessage = function(e) {
+      if (e.data === '[DONE]') {
+        evtSource.close();
+        hideThinking();
+        document.getElementById('send-btn').disabled = false;
+        return;
+      }
+      let data;
+      try { data = JSON.parse(e.data); } catch { return; }
+
+      if (data.error) {
+        hideThinking();
+        toast(data.error, 'err');
+        document.getElementById('send-btn').disabled = false;
+        evtSource.close();
+        return;
+      }
+
+      if (data.role === 'human') return; // already shown
+      if (data.role === 'ai' && !data.content && (!data.tool_calls || data.tool_calls.length === 0)) return;
+
+      hideThinking();
+      appendMessage(data.role, data.content || '', data.tool_calls || [], data.name || '');
+      showThinking();
+    };
+
+    evtSource.onerror = function() {
+      evtSource.close();
+      hideThinking();
+      document.getElementById('send-btn').disabled = false;
+      toast('Connection error. Is the server running?', 'err');
+    };
+  }
+
+  // Check initial status
+  fetch('/status').then(r=>r.json()).then(d => {
+    if (d.configured) setStatus(true);
+  });
+</script>
+</body>
+</html>
