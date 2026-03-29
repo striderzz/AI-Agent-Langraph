@@ -4,7 +4,8 @@ A full-stack Python web application that brings the **ReAct (Reasoning + Acting)
 
 ---
 
-![UI Screenshot](screenshots/ui_dallas.png)
+
+<img width="2560" height="1297" alt="Screenshot (400)" src="https://github.com/user-attachments/assets/e61e7942-6e25-4aef-b987-69b7a1fa8311" />
 
 ---
 
@@ -126,13 +127,16 @@ python visualize_graph.py --out-dir ./my_output --no-open
 ## Screenshots
 
 ### Agent UI — Dallas weather query
-![Dallas query](screenshots/ui_dallas.png)
+<img width="2560" height="1297" alt="Screenshot (400)" src="https://github.com/user-attachments/assets/262da510-ffde-41ed-8450-462732479670" />
+
 
 ### Agent UI — Mumbai weather query
-![Mumbai query](screenshots/ui_mumbai.png)
+<img width="2510" height="1323" alt="Screenshot (401)" src="https://github.com/user-attachments/assets/f6d2dd0f-5554-4086-b4e4-5c1704f1c1c9" />
+
 
 ### Interactive graph (react_graph.html)
-![Graph](screenshots/graph.png)
+<img width="2456" height="1325" alt="Screenshot (402)" src="https://github.com/user-attachments/assets/72dc6527-3dcc-48a2-9e03-bf99ff0be26e" />
+
 
 ---
 
@@ -213,12 +217,4 @@ Python 3.10+ recommended.
 
 ---
 
-## Based On
 
-This project is a full conversion of the **"Build Reasoning and Acting AI Agents with LangGraph"** lab from [IBM Skills Network](https://skills.network), expanded into a production-ready web application with a streaming UI and graph visualization tooling.
-
----
-
-## License
-
-MIT
